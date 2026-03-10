@@ -130,45 +130,43 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 # st.secrets permet de cacher la clé pour ne pas la mettre sur GitHub
                 # NOUVEAUTÉ 1 : On passe sur LLaMA 3 (ultra-stable sur Groq)
                 # On met à jour avec le modèle le plus récent et stable
+                # --- ÉTAPE 5 : GÉNÉRATION AVEC PROMPT AMÉLIORÉ ---
                 llm = ChatGroq(
                     groq_api_key=st.secrets["GROQ_API_KEY"], 
-                    model_name="llama-3.3-70b-versatile", 
-                    temperature=0.3
+                    model_name="llama-3.3-70b-versatile",
+                    temperature=0.5 # On augmente un peu pour plus de naturel
                 )
                 
-                historique_recent = ""
-                if len(st.session_state.messages) > 1:
-                    historique_recent = "Rappel de nos derniers échanges :\n"
-                    for msg in st.session_state.messages[-4:]:
-                        role = "Utilisateur" if msg["role"] == "user" else "IA"
-                        historique_recent += f"- {role} a dit : {msg['content']}\n"
+                # Nettoyage des noms de fichiers (Sources)
+                noms_fichiers = []
+                for doc in resultats:
+                    nom_propre = os.path.basename(doc.metadata.get('source', 'Inconnue'))
+                    if nom_propre not in noms_fichiers:
+                        noms_fichiers.append(nom_propre)
 
                 prompt = f"""
-                Tu es un assistant IA d'entreprise (ChatDoc Pro), amical, expert et très rigoureux.
+                Tu es ChatDoc Pro, un assistant expert. Réponds à l'utilisateur de manière fluide et détaillée en utilisant uniquement le contexte fourni.
 
-                Instructions :
-                1. EXACTITUDE : Basé UNIQUEMENT sur le contexte fourni. 
-                2. CLARTÉ : Fais des phrases courtes, aère ton texte, utilise des listes à puces et mets les points clés en **gras**.
-                3. HONNÊTETÉ : Si la réponse n'est pas dans le document, dis "Je suis désolé, cette information ne figure pas dans le document."
+                DIRECTIVES :
+                - Fais des phrases complètes et rédigées (pas juste des listes de 3 mots).
+                - Garde un ton professionnel mais chaleureux.
+                - Si l'information est absente, explique-le poliment.
 
-                {historique_recent}
-
-                Contexte extrait des documents :
+                CONTEXTE EXTRAIT :
                 {contexte_trouve}
 
-                Nouvelle question : {question}
+                QUESTION : {question}
 
-                Réponse :
+                RÉPONSE DÉTAILLÉE :
                 """
                 
-                # NOUVEAUTÉ 2 : On extrait le texte propre avec ".content"
                 reponse_brute = llm.invoke(prompt)
                 texte_final = reponse_brute.content
                 
                 st.markdown(texte_final)
                 
-                # Option bonus : Affichage des sources de manière discrète
-                sources = set([doc.metadata.get('source', 'Inconnue').split('\\')[-1] for doc in resultats])
-                st.caption(f"Sources utilisées : {', '.join(sources)}")
+                # Affichage propre des sources
+                if noms_fichiers:
+                    st.caption(f"📚 Sources : {', '.join(noms_fichiers)}")
                 
                 st.session_state.messages.append({"role": "assistant", "content": texte_final})
