@@ -5,7 +5,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_ollama import OllamaLLM
+from langchain_groq import ChatGroq
 
 # ==========================================
 # 1. CONFIGURATION VISUELLE DE LA PAGE
@@ -126,7 +126,13 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 resultats = st.session_state.vectordb.similarity_search(question, k=3)
                 contexte_trouve = "\n\n".join([doc.page_content for doc in resultats])
 
-                llm = OllamaLLM(model="gemma3:4b")
+                # On utilise l'API ultra-rapide de Groq au lieu du PC local (OllamaLLM)
+                # st.secrets permet de cacher la clé pour ne pas la mettre sur GitHub
+                llm = ChatGroq(
+                    groq_api_key=st.secrets["GROQ_API_KEY"], 
+                    model_name="gemma2-9b-it",
+                    temperature=0.3
+                )
                 
                 historique_recent = ""
                 if len(st.session_state.messages) > 1:
