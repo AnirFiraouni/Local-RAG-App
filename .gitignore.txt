@@ -1,0 +1,13 @@
+# Ignorer les bases de données locales
+chroma_db/
+
+# Ignorer les PDF et documents
+*.pdf
+*.txt
+*.csv
+
+# Ignorer les dossiers techniques de Python
+__pycache__/
+.venv/
+venv/
+env/
