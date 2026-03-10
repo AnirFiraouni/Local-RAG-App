@@ -131,33 +131,30 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 # NOUVEAUTÉ 1 : On passe sur LLaMA 3 (ultra-stable sur Groq)
                 # On met à jour avec le modèle le plus récent et stable
                 # --- ÉTAPE 5 : GÉNÉRATION AVEC PROMPT AMÉLIORÉ ---
+                # --- ÉTAPE 5 : GÉNÉRATION CONCISE ET SOURCES PROPRES ---
                 llm = ChatGroq(
                     groq_api_key=st.secrets["GROQ_API_KEY"], 
                     model_name="llama-3.3-70b-versatile",
-                    temperature=0.5 # On augmente un peu pour plus de naturel
+                    temperature=0.3
                 )
                 
-                # Nettoyage des noms de fichiers (Sources)
-                noms_fichiers = []
-                for doc in resultats:
-                    nom_propre = os.path.basename(doc.metadata.get('source', 'Inconnue'))
-                    if nom_propre not in noms_fichiers:
-                        noms_fichiers.append(nom_propre)
-
+                # Récupération des vrais noms de fichiers chargés par l'utilisateur
+                noms_originaux = [f.name for f in fichiers_upload]
+                
                 prompt = f"""
-                Tu es ChatDoc Pro, un assistant expert. Réponds à l'utilisateur de manière fluide et détaillée en utilisant uniquement le contexte fourni.
+                Tu es ChatDoc Pro. Ton rôle est de répondre de manière SYNTHÉTIQUE et PRÉCISE.
+                
+                RÈGLES :
+                1. RÉSUMÉ : Ne fais pas de longs paragraphes. Utilise 3 à 4 puces maximum pour aller à l'essentiel.
+                2. STYLE : Sois direct, professionnel et humain.
+                3. SOURCE : Utilise uniquement le contexte fourni.
 
-                DIRECTIVES :
-                - Fais des phrases complètes et rédigées (pas juste des listes de 3 mots).
-                - Garde un ton professionnel mais chaleureux.
-                - Si l'information est absente, explique-le poliment.
-
-                CONTEXTE EXTRAIT :
+                CONTEXTE :
                 {contexte_trouve}
 
                 QUESTION : {question}
 
-                RÉPONSE DÉTAILLÉE :
+                RÉPONSE RÉSUMÉE :
                 """
                 
                 reponse_brute = llm.invoke(prompt)
@@ -165,8 +162,8 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 
                 st.markdown(texte_final)
                 
-                # Affichage propre des sources
-                if noms_fichiers:
-                    st.caption(f"📚 Sources : {', '.join(noms_fichiers)}")
+                # Affichage des vrais noms de fichiers sans les "/tmp/"
+                if noms_originaux:
+                    st.caption(f"📚 Documents consultés : {', '.join(noms_originaux)}")
                 
                 st.session_state.messages.append({"role": "assistant", "content": texte_final})
