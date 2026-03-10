@@ -129,9 +129,10 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 # On utilise l'API ultra-rapide de Groq au lieu du PC local (OllamaLLM)
                 # st.secrets permet de cacher la clé pour ne pas la mettre sur GitHub
                 # NOUVEAUTÉ 1 : On passe sur LLaMA 3 (ultra-stable sur Groq)
+                # On met à jour avec le modèle le plus récent et stable
                 llm = ChatGroq(
                     groq_api_key=st.secrets["GROQ_API_KEY"], 
-                    model_name="llama3-8b-8192",
+                    model_name="llama-3.3-70b-versatile", 
                     temperature=0.3
                 )
                 
