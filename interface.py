@@ -7,82 +7,157 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_ollama import OllamaLLM
 
-# --- CONFIGURATION DE LA PAGE ---
-st.set_page_config(page_title="Mon IA Privée", page_icon="🤖")
-st.title("📄 Discute avec ton PDF")
-st.markdown("Cette IA tourne 100% localement sur ton PC, sans envoyer tes données sur internet !")
+# ==========================================
+# 1. CONFIGURATION VISUELLE DE LA PAGE
+# ==========================================
+st.set_page_config(
+    page_title="ChatDoc Pro | IA Privée", 
+    page_icon="🛡️", 
+    layout="wide", # Utilise toute la largeur de l'écran
+    initial_sidebar_state="expanded"
+)
 
-# --- GESTION DE LA MÉMOIRE (Session State) ---
-# Streamlit recharge la page à chaque action. On utilise "session_state" pour garder 
-# en mémoire la base de données et l'historique de la conversation.
+# ==========================================
+# 2. INITIALISATION DE LA MÉMOIRE
+# ==========================================
 if "vectordb" not in st.session_state:
     st.session_state.vectordb = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# --- BARRE LATÉRALE (Sidebar) : Upload du fichier ---
+# ==========================================
+# 3. BARRE LATÉRALE (Interface de contrôle)
+# ==========================================
 with st.sidebar:
-    st.header("1. Charge ton document")
-    fichier_upload = st.file_uploader("Glisse ton PDF ici", type="pdf")
+    st.title("⚙️ Centre de contrôle")
+    st.caption("Gérez vos documents et vos données.")
+    st.divider()
+    
+    st.header("📂 1. Vos Documents")
+    fichiers_upload = st.file_uploader("Glissez vos PDF ici", type="pdf", accept_multiple_files=True)
 
-    # Si un fichier est chargé et qu'il n'a pas encore été traité
-    if fichier_upload is not None and st.session_state.vectordb is None:
-        with st.spinner("🧠 Analyse et mémorisation du document en cours..."):
+    if fichiers_upload and st.session_state.vectordb is None:
+        if st.button("🚀 Lancer l'analyse", use_container_width=True, type="primary"):
             
-            # Astuce : On sauvegarde temporairement le fichier uploadé pour que PyPDFLoader puisse le lire
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as fichier_temp:
-                fichier_temp.write(fichier_upload.getvalue())
-                chemin_temp = fichier_temp.name
+            # Animation professionnelle détaillée
+            with st.status("📥 Traitement de vos documents...", expanded=True) as status:
+                st.write("Lecture des fichiers PDF...")
+                toutes_les_pages = []
+                for fichier in fichiers_upload:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as fichier_temp:
+                        fichier_temp.write(fichier.getvalue())
+                        chemin_temp = fichier_temp.name
+                    loader = PyPDFLoader(chemin_temp)
+                    toutes_les_pages.extend(loader.load()) 
 
-            # Étape 1 & 2 : Lecture et Découpage
-            loader = PyPDFLoader(chemin_temp)
-            pages = loader.load()
-            decoupeur = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-            morceaux = decoupeur.split_documents(pages)
+                st.write("Découpage analytique du texte...")
+                decoupeur = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+                morceaux = decoupeur.split_documents(toutes_les_pages)
 
-            # Étape 3 : Vectorisation (On garde Chroma en mémoire vive, sans créer de dossier)
-            modele_embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-            st.session_state.vectordb = Chroma.from_documents(documents=morceaux, embedding=modele_embedding)
+                st.write("Création de la mémoire vectorielle locale...")
+                modele_embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+                st.session_state.vectordb = Chroma.from_documents(documents=morceaux, embedding=modele_embedding)
 
-            st.success("✅ Document analysé ! Tu peux poser tes questions.")
+                status.update(label="✅ Documents mémorisés avec succès !", state="complete", expanded=False)
 
-# --- ZONE DE CHAT PRINCIPALE ---
+    st.divider()
+    st.header("🧰 2. Options")
+    
+    # Bouton d'exportation
+    if len(st.session_state.messages) > 0:
+        texte_export = "--- Rapport généré par ChatDoc Pro ---\n\n"
+        for msg in st.session_state.messages:
+            role = "👤 Utilisateur" if msg["role"] == "user" else "🤖 IA"
+            texte_export += f"{role} :\n{msg['content']}\n\n"
+        
+        st.download_button(
+            label="💾 Exporter le compte-rendu (.txt)",
+            data=texte_export,
+            file_name="rapport_ia.txt",
+            mime="text/plain",
+            use_container_width=True
+        )
 
-# On affiche l'historique des messages précédents
+    # Bouton Reset
+    if st.button("🗑️ Vider la mémoire et recommencer", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.vectordb = None
+        st.rerun()
+
+# ==========================================
+# 4. ZONE PRINCIPALE (Le Chatbot)
+# ==========================================
+st.title("🛡️ ChatDoc Pro")
+st.markdown("##### *Discutez avec vos documents professionnels en toute confidentialité.*")
+
+# Écran d'accueil si la conversation est vide
+if not st.session_state.messages:
+    st.write("") # Espace
+    st.info("👋 **Bienvenue !** Pour commencer, veuillez charger vos documents PDF dans le menu sur votre gauche.")
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.success("🔒 **100% Privé**\nAucune donnée n'est envoyée sur internet. Tout tourne sur votre machine.")
+    with col2:
+        st.warning("📚 **Multi-Documents**\nCroisez les informations de plusieurs PDF simultanément.")
+    with col3:
+        st.info("🧠 **IA Avancée**\nPropulsé par le modèle Gemma 3 (Google) optimisé pour la précision.")
+
+# Affichage de l'historique
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    # On donne des avatars sympas
+    avatar = "👤" if message["role"] == "user" else "🤖"
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
-# Boîte de dialogue pour poser une nouvelle question
-if question := st.chat_input("Pose ta question ici..."):
+# Boîte de dialogue
+if question := st.chat_input("Posez votre question sur les documents..."):
     
-    # On vérifie qu'un document a bien été chargé
     if st.session_state.vectordb is None:
-        st.error("⚠️ S'il te plaît, charge d'abord un fichier PDF sur le côté gauche !")
+        st.error("⚠️ Veuillez d'abord analyser un document via le menu de gauche.")
     else:
-        # On affiche la question de l'utilisateur
-        with st.chat_message("user"):
+        with st.chat_message("user", avatar="👤"):
             st.markdown(question)
         st.session_state.messages.append({"role": "user", "content": question})
 
-        # On génère la réponse de l'IA
-        with st.chat_message("assistant"):
-            with st.spinner("L'IA réfléchit..."):
+        with st.chat_message("assistant", avatar="🤖"):
+            with st.spinner("Recherche dans les documents et rédaction..."):
                 
-                # Étape 4 : Recherche (Retrieval)
-                resultats = st.session_state.vectordb.similarity_search(question, k=2)
+                resultats = st.session_state.vectordb.similarity_search(question, k=3)
                 contexte_trouve = "\n\n".join([doc.page_content for doc in resultats])
 
-                # Étape 5 : Génération avec Gemma
                 llm = OllamaLLM(model="gemma3:4b")
+                
+                historique_recent = ""
+                if len(st.session_state.messages) > 1:
+                    historique_recent = "Rappel de nos derniers échanges :\n"
+                    for msg in st.session_state.messages[-4:]:
+                        role = "Utilisateur" if msg["role"] == "user" else "IA"
+                        historique_recent += f"- {role} a dit : {msg['content']}\n"
+
                 prompt = f"""
-                Tu es un assistant francophone. Utilise UNIQUEMENT le contexte ci-dessous pour répondre.
-                Contexte: {contexte_trouve}
-                Question: {question}
+                Tu es un assistant IA d'entreprise (ChatDoc Pro), amical, expert et très rigoureux.
+
+                Instructions :
+                1. EXACTITUDE : Basé UNIQUEMENT sur le contexte fourni. 
+                2. CLARTÉ : Fais des phrases courtes, aère ton texte, utilise des listes à puces et mets les points clés en **gras**.
+                3. HONNÊTETÉ : Si la réponse n'est pas dans le document, dis "Je suis désolé, cette information ne figure pas dans le document."
+
+                {historique_recent}
+
+                Contexte extrait des documents :
+                {contexte_trouve}
+
+                Nouvelle question : {question}
+
+                Réponse :
                 """
                 
                 reponse = llm.invoke(prompt)
                 st.markdown(reponse)
                 
-                # On sauvegarde la réponse dans l'historique
+                # Option bonus : Affichage des sources de manière discrète
+                sources = set([doc.metadata.get('source', 'Inconnue').split('\\')[-1] for doc in resultats])
+                st.caption(f"Sources utilisées : {', '.join(sources)}")
+                
                 st.session_state.messages.append({"role": "assistant", "content": reponse})
