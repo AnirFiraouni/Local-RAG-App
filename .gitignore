@@ -5,6 +5,7 @@ chroma_db/
 *.pdf
 *.txt
 *.csv
+!requirements.txt
 
 # Ignorer les dossiers techniques de Python
 __pycache__/
