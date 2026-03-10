@@ -1,5 +1,8 @@
 # 🛡️ ChatDoc Pro - Assistant RAG Intelligent
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge.svg)](https://chatdoc-anirfiraouni.streamlit.app/)
+
+<a href="https://chatdoc-anirfiraouni.streamlit.app/" target="_blank">
+    <img src="https://static.streamlit.io/badges/streamlit_badge.svg" alt="Streamlit App">
+</a>
 ## 📝 Description
 Cette application web permet d'interroger un document PDF en langage naturel. Basée sur l'architecture **RAG (Retrieval-Augmented Generation)**, elle fonctionne entièrement en local sur la machine. Cela garantit une confidentialité absolue des données, car aucun document n'est envoyé sur des serveurs externes (Cloud ou API tierces).
 
