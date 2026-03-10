@@ -128,9 +128,10 @@ if question := st.chat_input("Posez votre question sur les documents..."):
 
                 # On utilise l'API ultra-rapide de Groq au lieu du PC local (OllamaLLM)
                 # st.secrets permet de cacher la clé pour ne pas la mettre sur GitHub
+                # NOUVEAUTÉ 1 : On passe sur LLaMA 3 (ultra-stable sur Groq)
                 llm = ChatGroq(
                     groq_api_key=st.secrets["GROQ_API_KEY"], 
-                    model_name="gemma2-9b-it",
+                    model_name="llama3-8b-8192",
                     temperature=0.3
                 )
                 
@@ -159,11 +160,14 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 Réponse :
                 """
                 
-                reponse = llm.invoke(prompt)
-                st.markdown(reponse)
+                # NOUVEAUTÉ 2 : On extrait le texte propre avec ".content"
+                reponse_brute = llm.invoke(prompt)
+                texte_final = reponse_brute.content
+                
+                st.markdown(texte_final)
                 
                 # Option bonus : Affichage des sources de manière discrète
                 sources = set([doc.metadata.get('source', 'Inconnue').split('\\')[-1] for doc in resultats])
                 st.caption(f"Sources utilisées : {', '.join(sources)}")
                 
-                st.session_state.messages.append({"role": "assistant", "content": reponse})
+                st.session_state.messages.append({"role": "assistant", "content": texte_final})
