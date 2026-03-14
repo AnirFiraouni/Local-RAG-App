@@ -28,5 +28,5 @@ Cette application web permet d'interroger un document PDF en langage naturel. Ba
 
 1. **Cloner le dépôt :**
    ```bash
-   git clone [https://github.com/VOTRE_PSEUDO/Local-RAG-App.git](https://github.com/VOTRE_PSEUDO/Local-RAG-App.git)
+   git clone [https://github.com/AnirFiraouni/Local-RAG-App](https://github.com/AnirFiraouni/Local-RAG-App)
    cd Local-RAG-App

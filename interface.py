@@ -1,69 +1,90 @@
 import streamlit as st
 import tempfile
 import os
-from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader, CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain_groq import ChatGroq
 
-# ==========================================
-# 1. CONFIGURATION VISUELLE DE LA PAGE
-# ==========================================
+# Partie 1 : Configuration visuelle de la page
 st.set_page_config(
     page_title="ChatDoc Pro | IA Privée", 
     page_icon="🛡️", 
-    layout="wide", # Utilise toute la largeur de l'écran
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ==========================================
-# 2. INITIALISATION DE LA MÉMOIRE
-# ==========================================
+# Partie 2 : Initialisation des variables
+# On garde en mémoire la base de données et l'historique des messages
 if "vectordb" not in st.session_state:
     st.session_state.vectordb = None
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# ==========================================
-# 3. BARRE LATÉRALE (Interface de contrôle)
-# ==========================================
+# Partie 3 : Barre latérale (Menu de gauche)
 with st.sidebar:
     st.title("⚙️ Centre de contrôle")
     st.caption("Gérez vos documents et vos données.")
     st.divider()
     
     st.header("📂 1. Vos Documents")
-    fichiers_upload = st.file_uploader("Glissez vos PDF ici", type="pdf", accept_multiple_files=True)
+    # On permet de charger plusieurs types de fichiers en même temps
+    fichiers_upload = st.file_uploader(
+        "Glissez vos fichiers ici", 
+        type=["pdf", "txt", "docx", "csv"], 
+        accept_multiple_files=True
+    )
 
+    # Si on a des fichiers et que la base n'est pas encore créée
     if fichiers_upload and st.session_state.vectordb is None:
         if st.button("🚀 Lancer l'analyse", use_container_width=True, type="primary"):
             
-            # Animation professionnelle détaillée
             with st.status("📥 Traitement de vos documents...", expanded=True) as status:
-                st.write("Lecture des fichiers PDF...")
+                st.write("Lecture et extraction des données...")
                 toutes_les_pages = []
+                
+                # On analyse chaque fichier et on utilise le bon outil de lecture selon l'extension
                 for fichier in fichiers_upload:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as fichier_temp:
+                    extension = os.path.splitext(fichier.name)[1].lower()
+                    
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as fichier_temp:
                         fichier_temp.write(fichier.getvalue())
                         chemin_temp = fichier_temp.name
-                    loader = PyPDFLoader(chemin_temp)
+                    
+                    if extension == ".pdf":
+                        loader = PyPDFLoader(chemin_temp)
+                    elif extension == ".docx":
+                        loader = Docx2txtLoader(chemin_temp)
+                    elif extension == ".txt":
+                        loader = TextLoader(chemin_temp, encoding="utf-8")
+                    elif extension == ".csv":
+                        loader = CSVLoader(chemin_temp, encoding="utf-8")
+                    else:
+                        continue 
+                        
                     toutes_les_pages.extend(loader.load()) 
 
                 st.write("Découpage analytique du texte...")
                 decoupeur = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
                 morceaux = decoupeur.split_documents(toutes_les_pages)
 
-                st.write("Création de la mémoire vectorielle locale...")
+                st.write("Création de la mémoire vectorielle...")
                 modele_embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-                st.session_state.vectordb = Chroma.from_documents(documents=morceaux, embedding=modele_embedding)
+                
+                # On sauvegarde la base pour ne pas tout recalculer si l'appli s'endort
+                st.session_state.vectordb = Chroma.from_documents(
+                    documents=morceaux, 
+                    embedding=modele_embedding,
+                    persist_directory="./chroma_sauvegarde" 
+                )
 
                 status.update(label="✅ Documents mémorisés avec succès !", state="complete", expanded=False)
 
     st.divider()
     st.header("🧰 2. Options")
     
-    # Bouton d'exportation
+    # Bouton pour télécharger la conversation au format texte
     if len(st.session_state.messages) > 0:
         texte_export = "--- Rapport généré par ChatDoc Pro ---\n\n"
         for msg in st.session_state.messages:
@@ -78,44 +99,48 @@ with st.sidebar:
             use_container_width=True
         )
 
-    # Bouton Reset
-    if st.button("🗑️ Vider la mémoire et recommencer", use_container_width=True):
+    # Nettoyer seulement la discussion (on garde les PDF en mémoire)
+    if st.button("🧹 Effacer la conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.rerun()
+
+    # Tout remettre à zéro (Discussion + PDF)
+    if st.button("🗑️ Vider la mémoire totale et recommencer", use_container_width=True):
         st.session_state.messages = []
         st.session_state.vectordb = None
         st.rerun()
 
-# ==========================================
-# 4. ZONE PRINCIPALE (Le Chatbot)
-# ==========================================
+# Partie 4 : Zone principale (Le Chat)
 st.title("🛡️ ChatDoc Pro")
 st.markdown("##### *Discutez avec vos documents professionnels en toute confidentialité.*")
 
-# Écran d'accueil si la conversation est vide
+# Écran d'accueil quand c'est vide
 if not st.session_state.messages:
-    st.write("") # Espace
-    st.info("👋 **Bienvenue !** Pour commencer, veuillez charger vos documents PDF dans le menu sur votre gauche.")
+    st.write("") 
+    st.info("👋 **Bienvenue !** Pour commencer, veuillez charger vos documents (PDF, Word, TXT, CSV) sur votre gauche.")
     
     col1, col2, col3 = st.columns(3)
     with col1:
         st.success("🔒 **100% Privé**\nAucune donnée n'est envoyée sur internet. Tout tourne sur votre machine.")
     with col2:
-        st.warning("📚 **Multi-Documents**\nCroisez les informations de plusieurs PDF simultanément.")
+        st.warning("📚 **Multi-Documents**\nCroisez les informations de plusieurs PDF, Word ou Excel simultanément.")
     with col3:
-        st.info("🧠 **IA Avancée**\nPropulsé par le modèle Gemma 3 (Google) optimisé pour la précision.")
+        st.info("🧠 **IA Avancée**\nPropulsé par LLaMA 3.3 (Groq) optimisé pour la précision.")
 
-# Affichage de l'historique
+# On affiche les anciens messages avec de beaux emojis
 for message in st.session_state.messages:
-    # On donne des avatars sympas
     avatar = "👤" if message["role"] == "user" else "🤖"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
-# Boîte de dialogue
+# Quand l'utilisateur tape une question
 if question := st.chat_input("Posez votre question sur les documents..."):
     
+    # Sécurité : on vérifie qu'il y a bien un document chargé
     if st.session_state.vectordb is None:
         st.error("⚠️ Veuillez d'abord analyser un document via le menu de gauche.")
     else:
+        # On affiche la question de l'utilisateur
         with st.chat_message("user", avatar="👤"):
             st.markdown(question)
         st.session_state.messages.append({"role": "user", "content": question})
@@ -123,31 +148,48 @@ if question := st.chat_input("Posez votre question sur les documents..."):
         with st.chat_message("assistant", avatar="🤖"):
             with st.spinner("Recherche dans les documents et rédaction..."):
                 
-                resultats = st.session_state.vectordb.similarity_search(question, k=3)
+                # 1. On cherche les infos dans nos documents
+                resultats = st.session_state.vectordb.similarity_search(question, k=4)
                 contexte_trouve = "\n\n".join([doc.page_content for doc in resultats])
 
-                # On utilise l'API ultra-rapide de Groq au lieu du PC local (OllamaLLM)
-                # st.secrets permet de cacher la clé pour ne pas la mettre sur GitHub
-                # NOUVEAUTÉ 1 : On passe sur LLaMA 3 (ultra-stable sur Groq)
-                # On met à jour avec le modèle le plus récent et stable
-                # --- ÉTAPE 5 : GÉNÉRATION AVEC PROMPT AMÉLIORÉ ---
-                # --- ÉTAPE 5 : GÉNÉRATION CONCISE ET SOURCES PROPRES ---
+                # 2. On configure l'IA
                 llm = ChatGroq(
                     groq_api_key=st.secrets["GROQ_API_KEY"], 
                     model_name="llama-3.3-70b-versatile",
                     temperature=0.3
                 )
                 
-                # Récupération des vrais noms de fichiers chargés par l'utilisateur
-                noms_originaux = [f.name for f in fichiers_upload]
+                # 3. ON RESTAURE LA MÉMOIRE CONVERSATIONNELLE (Ce que j'avais oublié !)
+                # On récupère les 4 derniers messages pour que l'IA comprenne le contexte
+                historique_recent = ""
+                if len(st.session_state.messages) > 1:
+                    historique_recent = "Rappel de nos derniers échanges :\n"
+                    for msg in st.session_state.messages[-4:]:
+                        role = "Utilisateur" if msg["role"] == "user" else "IA"
+                        historique_recent += f"- {role} a dit : {msg['content']}\n"
                 
+                # 4. On extrait proprement le nom du fichier et la page exacte pour nos sources
+                sources_precises = set()
+                for doc in resultats:
+                    source_chemin = doc.metadata.get('source', 'Inconnu')
+                    nom_fichier = os.path.basename(source_chemin)
+                    page = doc.metadata.get('page')
+                    
+                    if page is not None:
+                        sources_precises.add(f"*{nom_fichier}* (Page {int(page) + 1})")
+                    else:
+                        sources_precises.add(f"*{nom_fichier}*")
+                
+                # 5. On envoie tout ça à l'IA avec notre prompt strict
                 prompt = f"""
                 Tu es ChatDoc Pro. Ton rôle est de répondre de manière SYNTHÉTIQUE et PRÉCISE.
                 
                 RÈGLES :
-                1. RÉSUMÉ : Ne fais pas de longs paragraphes. Utilise 3 à 4 puces maximum pour aller à l'essentiel.
+                1. RÉSUMÉ : Utilise 3 à 4 puces maximum pour aller à l'essentiel.
                 2. STYLE : Sois direct, professionnel et humain.
                 3. SOURCE : Utilise uniquement le contexte fourni.
+
+                {historique_recent}
 
                 CONTEXTE :
                 {contexte_trouve}
@@ -160,10 +202,12 @@ if question := st.chat_input("Posez votre question sur les documents..."):
                 reponse_brute = llm.invoke(prompt)
                 texte_final = reponse_brute.content
                 
+                # On affiche la réponse de l'IA
                 st.markdown(texte_final)
                 
-                # Affichage des vrais noms de fichiers sans les "/tmp/"
-                if noms_originaux:
-                    st.caption(f"📚 Documents consultés : {', '.join(noms_originaux)}")
+                # On affiche les sources cliquables juste en dessous
+                if sources_precises:
+                    st.caption(f"🎯 **Citations exactes :** {', '.join(sources_precises)}")
                 
+                # On sauvegarde la réponse dans l'historique
                 st.session_state.messages.append({"role": "assistant", "content": texte_final})
