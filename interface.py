@@ -81,16 +81,10 @@ with st.sidebar:
 
                 st.write("Création de la mémoire vectorielle...")
                 modele_embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-                
-                # On rase l'ancien dossier pour être sûr de repartir de zéro à chaque nouvelle analyse
-                if os.path.exists("./chroma_sauvegarde"):
-                    shutil.rmtree("./chroma_sauvegarde")
 
-                # On sauvegarde la base pour ne pas tout recalculer si l'appli s'endort
                 st.session_state.vectordb = Chroma.from_documents(
                     documents=morceaux, 
-                    embedding=modele_embedding,
-                    persist_directory="./chroma_sauvegarde" 
+                    embedding=modele_embedding
                 )
 
                 status.update(label="✅ Documents mémorisés avec succès !", state="complete", expanded=False)
@@ -123,11 +117,6 @@ with st.sidebar:
     if st.button("🗑️ Vider la mémoire totale et recommencer", use_container_width=True):
         st.session_state.messages = []
         st.session_state.vectordb = None
-        
-        # ON DÉTRUIT LE DOSSIER PHYSIQUE !
-        if os.path.exists("./chroma_sauvegarde"):
-            shutil.rmtree("./chroma_sauvegarde")
-            
         st.rerun()
 
 # Partie 4 : Zone principale (Le Chat)
