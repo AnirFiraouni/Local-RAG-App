@@ -82,6 +82,10 @@ with st.sidebar:
                 st.write("Création de la mémoire vectorielle...")
                 modele_embedding = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
                 
+                # On rase l'ancien dossier pour être sûr de repartir de zéro à chaque nouvelle analyse
+                if os.path.exists("./chroma_sauvegarde"):
+                    shutil.rmtree("./chroma_sauvegarde")
+
                 # On sauvegarde la base pour ne pas tout recalculer si l'appli s'endort
                 st.session_state.vectordb = Chroma.from_documents(
                     documents=morceaux, 
