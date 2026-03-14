@@ -1,7 +1,6 @@
 import streamlit as st
 import tempfile
 import os
-import shutil 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader, CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
