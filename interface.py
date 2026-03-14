@@ -1,6 +1,7 @@
 import streamlit as st
 import tempfile
 import os
+import shutil 
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, Docx2txtLoader, CSVLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -45,8 +46,10 @@ with st.sidebar:
                 toutes_les_pages = []
                 
                 # On analyse chaque fichier et on utilise le bon outil de lecture selon l'extension
+                # On analyse chaque fichier et on utilise le bon outil de lecture
                 for fichier in fichiers_upload:
                     extension = os.path.splitext(fichier.name)[1].lower()
+                    nom_original = fichier.name # <-- On garde le vrai nom de côté !
                     
                     with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as fichier_temp:
                         fichier_temp.write(fichier.getvalue())
@@ -63,7 +66,14 @@ with st.sidebar:
                     else:
                         continue 
                         
-                    toutes_les_pages.extend(loader.load()) 
+                    # On charge les pages du document
+                    documents_charges = loader.load()
+                    
+                    # L'ASTUCE EST ICI : On remplace le nom moche par le vrai nom dans la mémoire de l'IA !
+                    for doc in documents_charges:
+                        doc.metadata['source'] = nom_original
+                        
+                    toutes_les_pages.extend(documents_charges)
 
                 st.write("Découpage analytique du texte...")
                 decoupeur = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
@@ -105,9 +115,15 @@ with st.sidebar:
         st.rerun()
 
     # Tout remettre à zéro (Discussion + PDF)
+    # Le bouton Reset total (Conversation + Documents)
     if st.button("🗑️ Vider la mémoire totale et recommencer", use_container_width=True):
         st.session_state.messages = []
         st.session_state.vectordb = None
+        
+        # ON DÉTRUIT LE DOSSIER PHYSIQUE !
+        if os.path.exists("./chroma_sauvegarde"):
+            shutil.rmtree("./chroma_sauvegarde")
+            
         st.rerun()
 
 # Partie 4 : Zone principale (Le Chat)
