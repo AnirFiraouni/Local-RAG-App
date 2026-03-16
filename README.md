@@ -5,26 +5,24 @@
 </a>
 
 ## 📝 Description
-Cette application web permet d'interroger un document PDF en langage naturel. Basée sur l'architecture **RAG (Retrieval-Augmented Generation)**, elle fonctionne entièrement en local sur la machine. Cela garantit une confidentialité absolue des données, car aucun document n'est envoyé sur des serveurs externes (Cloud ou API tierces).
+ChatDoc Pro est une application web d'Intelligence Artificielle d'entreprise basée sur l'architecture **RAG (Retrieval-Augmented Generation)**. Elle permet d'interroger et de croiser les informations de multiples documents privés en langage naturel, avec une traçabilité complète des sources. Initialement conçue en local, l'application est désormais propulsée par le Cloud pour offrir des performances professionnelles.
 
-## 🚀 Fonctionnalités
-* **Interface Web interactive** développée avec Streamlit (façon chatbot).
-* **Ingestion de documents PDF** avec découpage intelligent (Chunking) pour préserver le contexte.
-* **Recherche sémantique** ultra-rapide via des embeddings locaux et une base vectorielle en mémoire.
-* **Génération de réponses** propulsée par le Grand Modèle de Langage (LLM) local **Gemma 3** de Google.
+## 🚀 Fonctionnalités Clés
+* **Support Multi-Formats :** Ingestion simultanée de fichiers PDF, Word (.docx), Texte (.txt) et Excel/Données (.csv).
+* **Citations Exactes :** L'IA source systématiquement ses réponses en indiquant le nom du document original et le **numéro de page exact**.
+* **Recherche Sémantique Hybride :** Découpage intelligent (Chunking) et vectorisation en mémoire vive pour des requêtes instantanées.
+* **Moteur LLM Haute Performance :** Génération de réponses synthétiques via le modèle **LLaMA 3.3 70b** (via l'API Groq), garantissant rapidité et précision.
+* **Gestion de l'historique :** Exportation des comptes-rendus de chat et gestion indépendante de la mémoire (nettoyage de conversation sans perdre l'indexation des documents).
 
 ## 🛠️ Technologies Utilisées (Stack)
 * **Langage :** Python
-* **Orchestration IA :** LangChain
-* **Interface Utilisateur :** Streamlit
-* **Modèle LLM :** Ollama (Modèle `gemma3:4b`)
-* **Base de Données Vectorielle :** ChromaDB
+* **Interface Web :** Streamlit
+* **Orchestration RAG :** LangChain
+* **Modèle LLM :** API Groq (`llama-3.3-70b-versatile`)
+* **Base de Données Vectorielle :** ChromaDB (In-Memory)
 * **Modèle d'Embedding :** HuggingFace (`all-MiniLM-L6-v2`)
 
-## 📸 Démonstration
-*Insérer une capture d'écran de l'interface Streamlit ici.*
-
-## ⚙️ Installation et Lancement
+## ⚙️ Installation et Lancement Local
 
 1. **Cloner le dépôt :**
    ```bash
